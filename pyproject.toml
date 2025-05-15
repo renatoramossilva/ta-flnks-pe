@@ -17,3 +17,4 @@ build-backend = "poetry.core.masonry.api"
 uvicorn = "^0.34.2"
 fastapi = "^0.115.12"
 playwright = "^1.52.0"
+bindl-lib = {git = "https://github.com/renatoramossilva/bindl-lib.git", rev = "1.1.0"}

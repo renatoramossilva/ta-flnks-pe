@@ -3,6 +3,9 @@ from pydantic import BaseModel, Field
 from playwright.async_api import async_playwright, TimeoutError, Page, ElementHandle
 from typing import List, Dict, Optional
 from fastapi.responses import JSONResponse
+from bindl.logger import setup_logger
+
+LOG = setup_logger(__name__)
 
 router = APIRouter()
 
@@ -54,6 +57,7 @@ class Scraper:
         ]
         ```
         """
+        LOG.info("Starting scrape process for %s page(s) at URL: %s", pages, self.url)
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
@@ -61,18 +65,30 @@ class Scraper:
             results = []
             current_url = self.url
 
-            for _ in range(pages):
+            for page_number in range(1, pages + 1):
+                LOG.debug("Scraping page %s: %s", page_number, current_url)
                 try:
                     await page.goto(current_url, timeout=60000)
                 except TimeoutError as err:
-                    print(f"[ERROR] Timeout error: {err}")
+                    LOG.error("Timeout error on page %s: %s", page_number, err)
                     break
+
                 athing_rows = await page.query_selector_all("tr.athing")
-                page_results = [
-                    await self.extract_article_data(row, page)
-                    for row in athing_rows if await row.get_attribute("id")
-                ]
-                results.extend([r for r in page_results if r])
+                LOG.debug("Found %s article rows on page %s", len(athing_rows), page_number)
+
+                page_results = []
+                for row in athing_rows:
+                    article_id = await row.get_attribute("id")
+                    if article_id:
+                        LOG.debug("Processing article ID: %s on page %s", article_id, page_number)
+                        try:
+                            article_data = await self.extract_article_data(row, page)
+                            page_results.append(article_data)
+                        except Exception as e:
+                            LOG.error("Error scraping article ID %s: %s", article_id, e)
+
+                results.extend(page_results)
+                LOG.info("Page %s scraped. Articles found: %s", page_number, len(page_results))
 
                 more_link = await page.query_selector("a.morelink")
                 if more_link:
@@ -80,16 +96,14 @@ class Scraper:
                     if next_href:
                         current_url = self.url + next_href
                     else:
+                        LOG.warning("No 'href' attribute found for 'morelink' on page %s", page_number)
                         break
                 else:
+                    LOG.info("No 'morelink' found. Stopping scrape at page %s", page_number)
                     break
 
             await browser.close()
-            print(f"[INFO] Scraping completed. Total articles scraped: {len(results)}")
-            print(f"[DEBUG] Articles found on the current page: {len(athing_rows)}")
-            print(f"[DEBUG] Cumulative articles scraped so far: {len(results)}")
-            print(f"[INFO] Total pages scraped: {pages}")
-
+            LOG.info("Scraping completed. Total articles scraped: %s", len(results))
             return results
 
     async def extract_article_data(self, row: ElementHandle, page: Page) -> List[Dict]:
@@ -122,6 +136,8 @@ class HackerNewsScraper(Scraper):
         ```
         """
         article_id = await row.get_attribute("id")
+        LOG.debug("Extracting data for article ID: %s", article_id)
+
         title_link = await row.query_selector(".titleline a")
         title = await title_link.inner_text() if title_link else None
         url = await title_link.get_attribute("href") if title_link else None
@@ -136,16 +152,20 @@ class HackerNewsScraper(Scraper):
 
             age_span = await subtext_row.query_selector(".age")
             published = await age_span.inner_text() if age_span else None
+
         else:
             sent_by = None
             published = None
+            LOG.warning("No score element found for article ID: %s. sent_by and published fields set to None.", article_id)
 
-        return ScraperResponse(
+        response = ScraperResponse(
             title=title,
             url=url,
             sent_by=sent_by,
             published=published,
         )
+        LOG.info("Successfully extracted data for article ID: %s: %s \n", article_id, response.dict())
+        return response
 
 
 @router.get(
