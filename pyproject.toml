@@ -35,6 +35,7 @@ select = ["ALL"]
 ignore = [
     "ANN204",  # Missing return type annotation for special method `__init__`
     "E501",    # Line too long
-    "D107",     # Missing docstring in `__init__`
-    "TRY400"   # Use `logging.exception` instead of `logging.error`
+    "D107",    # Missing docstring in `__init__`
+    "TRY400",  # Use `logging.exception` instead of `logging.error`
+    "D104"     # Missing docstring in public package
 ]
