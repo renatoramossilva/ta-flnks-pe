@@ -1,0 +1,40 @@
+
+name: Python Linters Action
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+            python-version: '3.12'
+      - name: Configure Git to use token for private repos
+        run: git config --global url."https://${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+      - name: Install Poetry
+        run: |
+            curl -sSL https://install.python-poetry.org | python3 -
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: poetry install --no-root
+
+      - name: Run black
+        run: |
+            poetry run black --check --diff .  # Check formatting without making changes
+
+      - name: Run ruff
+        run: |
+            poetry run ruff check --fix --exit-non-zero-on-fix
+
+      - name: Run mypy
+        run: poetry run mypy **/*.py --install-types --non-interactive --verbose
