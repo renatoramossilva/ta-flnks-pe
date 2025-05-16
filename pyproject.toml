@@ -18,3 +18,23 @@ uvicorn = "^0.34.2"
 fastapi = "^0.115.12"
 playwright = "^1.52.0"
 bindl-lib = {git = "https://github.com/renatoramossilva/bindl-lib.git", rev = "1.1.0"}
+black = "^25.1.0"
+ruff = "^0.11.10"
+mypy = "^1.15.0"
+pre-commit = "^4.2.0"
+
+[tool.ruff]
+# Defaults: https://beta.ruff.rs/docs/configuration/#using-pyprojecttoml
+target-version = "py310"
+fix = true
+show-fixes = true
+respect-gitignore = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN204",  # Missing return type annotation for special method `__init__`
+    "E501",    # Line too long
+    "D107",     # Missing docstring in `__init__`
+    "TRY400"   # Use `logging.exception` instead of `logging.error`
+]
