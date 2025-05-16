@@ -1,0 +1,6 @@
+services:
+  app:
+    build:
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8081:8081"
