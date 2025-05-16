@@ -194,15 +194,15 @@ class HackerNewsScraper(Scraper):
         score_element = await page.query_selector(f"#score_{article_id}")
 
         if score_element:
-            parent_handle = await row.get_property("parentElement")
-            subtext_row = parent_handle.as_element()
+            subtext_row = await score_element.evaluate_handle(
+                "node => node.parentElement",
+            )
 
-            if subtext_row:
-                user_link = await subtext_row.query_selector(".hnuser")
-                sent_by = await user_link.inner_text() if user_link else None
+            user_link = await subtext_row.query_selector(".hnuser")  # type: ignore[attr-defined]
+            sent_by = await user_link.inner_text() if user_link else None
 
-                age_span = await subtext_row.query_selector(".age")
-                published = await age_span.inner_text() if age_span else None
+            age_span = await subtext_row.query_selector(".age")  # type: ignore[attr-defined]
+            published = await age_span.inner_text() if age_span else None
 
         else:
             sent_by = None

@@ -1,7 +1,8 @@
 """Main entry point for the FastAPI application."""
 
-from api.routes import news
 from fastapi import FastAPI
+
+from app.api.routes import news
 
 app = FastAPI()
 
