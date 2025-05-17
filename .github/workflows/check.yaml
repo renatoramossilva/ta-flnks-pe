@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-            python-version: '3.12'
+            python-version: '3.10'
       - name: Configure Git to use token for private repos
         run: git config --global url."https://${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
       - name: Install Poetry
@@ -39,3 +39,6 @@ jobs:
 
       - name: Run mypy
         run: poetry run mypy **/*.py --install-types --non-interactive --verbose
+
+      - name: Run tox
+        run: poetry run tox
