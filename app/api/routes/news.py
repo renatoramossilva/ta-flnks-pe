@@ -5,7 +5,13 @@ from typing import Annotated
 
 from bindl.logger import setup_logger
 from fastapi import APIRouter, Path, status
-from playwright.async_api import ElementHandle, Page, async_playwright
+from playwright.async_api import (
+    Browser,
+    ElementHandle,
+    Page,
+    Playwright,
+    async_playwright,
+)
 from pydantic import BaseModel, Field
 
 from app.dependencies.redis import get_redis_repo
@@ -47,6 +53,21 @@ class ScraperResponse(BaseModel):
     }
 
 
+class BrowserManager:
+    """Handles browser operations using Playwright."""
+
+    @staticmethod
+    async def get_browser() -> tuple[Playwright, Browser]:
+        """Launch a headless browser.
+
+        **Returns:**
+        - A tuple containing the Playwright instance and the browser instance.
+        """
+        playwright = await async_playwright().start()
+        browser = await playwright.chromium.launch(headless=True)
+        return playwright, browser
+
+
 class Scraper:
     """Base class for web scraping functionality."""
 
@@ -75,10 +96,10 @@ class Scraper:
         ]
         ```
         """
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
+        playwright, browser = await BrowserManager.get_browser()
+        page = await browser.new_page()
 
+        try:
             results = []
             current_url = self.url
 
@@ -103,60 +124,87 @@ class Scraper:
                     LOG.error("Timeout error on page %s: %s", page_number, err)
                     break
 
-                athing_rows = await page.query_selector_all("tr.athing")
-                LOG.debug(
-                    "Found %s article rows on page %s",
-                    len(athing_rows),
-                    page_number,
-                )
-
-                page_results = []
-                for row in athing_rows:
-                    article_id = await row.get_attribute("id")
-                    if article_id:
-                        LOG.debug(
-                            "Processing article ID: %s on page %s",
-                            article_id,
-                            page_number,
-                        )
-                        try:
-                            article_data = await self.extract_article_data(row, page)
-                            page_results.append(article_data)
-                        except Exception as e:  # noqa: BLE001
-                            LOG.error("Error scraping article ID %s: %s", article_id, e)
-
+                page_results = await self.scrape_page(page, page_number)
                 results.extend(page_results)
+
                 data_to_store = [item.dict() for item in page_results]
                 LOG.info("Saving cache info: %s", url_page)
                 get_redis_repo().set_value(url_page, json.dumps(data_to_store), 60)
 
-                LOG.info(
-                    "Page %s scraped. Articles found: %s",
-                    page_number,
-                    len(page_results),
-                )
-
-                more_link = await page.query_selector("a.morelink")
-                if more_link:
-                    next_href = await more_link.get_attribute("href")
-                    if next_href:
-                        current_url = self.url + next_href
-                    else:
-                        LOG.warning(
-                            "No 'href' attribute found for 'morelink' on page %s",
-                            page_number,
-                        )
-                        break
-                else:
-                    LOG.info(
-                        "No 'morelink' found. Stopping scrape at page %s",
-                        page_number,
-                    )
+                current_url = await self.get_next_page_url(page, page_number) or ""
+                if not current_url:
                     break
 
-            await browser.close()
             LOG.info("Scraping completed. Total articles scraped: %s", len(results))
             return results
+        finally:
+            await browser.close()
+            await playwright.stop()
+
+    async def scrape_page(self, page: Page, page_number: int) -> list[ScraperResponse]:
+        """Scrape a single page and extract article data.
+
+        **Parameters:**
+        - `page`: The Playwright Page object representing the current page to scrape.
+        - `page_number`: The number of the page being scraped, used for logging purposes.
+
+        **Returns:**
+        - A list of ScraperResponse objects containing the scraped article data from the page.
+        """
+        athing_rows = await page.query_selector_all("tr.athing")
+        LOG.debug(
+            "Found %s article rows on page %s",
+            len(athing_rows),
+            page_number,
+        )
+
+        page_results = []
+        for row in athing_rows:
+            article_id = await row.get_attribute("id")
+            if article_id:
+                LOG.debug(
+                    "Processing article ID: %s on page %s",
+                    article_id,
+                    page_number,
+                )
+                try:
+                    article_data = await self.extract_article_data(row, page)
+                    page_results.append(article_data)
+                except Exception as e:  # noqa: BLE001
+                    LOG.error("Error scraping article ID %s: %s", article_id, e)
+
+        LOG.info(
+            "Page %s scraped. Articles found: %s",
+            page_number,
+            len(page_results),
+        )
+        return page_results
+
+    async def get_next_page_url(self, page: Page, page_number: int) -> str | None:
+        """Retrieve the URL for the next page of content.
+
+        **Parameters:**
+        - `page`: The current page object to query for the next page link.
+        - `page_number`: The current page number being processed.
+
+        **Returns:**
+        - `str | None`: The URL of the next page if found, otherwise `None`.
+        """
+        more_link = await page.query_selector("a.morelink")
+        if more_link:
+            next_href = await more_link.get_attribute("href")
+            if next_href:
+                return self.url + next_href
+            LOG.warning(
+                "No 'href' attribute found for 'morelink' on page %s",
+                page_number,
+            )
+        else:
+            LOG.info(
+                "No 'morelink' found. Stopping scrape at page %s",
+                page_number,
+            )
+        return None
 
     async def extract_article_data(
         self,
