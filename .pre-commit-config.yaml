@@ -21,10 +21,8 @@ repos:
         language: system
         types: [python]
 
-      - id: pytest
-        name: pytest
-        entry: poetry run pytest tests
+      - id: tox
+        name: run-tox
         language: system
-        types: [python]
+        entry: poetry run tox
         pass_filenames: false
-
