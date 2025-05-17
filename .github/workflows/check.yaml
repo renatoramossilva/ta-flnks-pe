@@ -33,6 +33,7 @@ jobs:
             poetry run black --check --diff .  # Check formatting without making changes
 
       - name: Run ruff
+        working-directory: app
         run: |
             poetry run ruff check --fix --exit-non-zero-on-fix
 
