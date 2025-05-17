@@ -49,7 +49,7 @@ RUN apt-get update && apt-get install -y \
 RUN playwright install
 
 # Expose the application port
-EXPOSE 8081
+EXPOSE 3000
 
 # Define the command to run the application
-CMD ["uvicorn", "app.main:app", "--host=0.0.0.0", "--port=8081", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host=0.0.0.0", "--port=3000", "--reload"]
