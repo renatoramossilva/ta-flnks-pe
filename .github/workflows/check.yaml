@@ -39,3 +39,6 @@ jobs:
 
       - name: Run mypy
         run: poetry run mypy **/*.py --install-types --non-interactive --verbose
+
+      - name: Run tox
+        run: poetry run tox
