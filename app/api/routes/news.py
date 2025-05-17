@@ -1,11 +1,14 @@
 """Scraper for Hacker News articles."""
 
+import json
 from typing import Annotated
 
 from bindl.logger import setup_logger
 from fastapi import APIRouter, Path, status
 from playwright.async_api import ElementHandle, Page, async_playwright
 from pydantic import BaseModel, Field
+
+from app.dependencies.redis import get_redis_repo
 
 LOG = setup_logger(__name__)
 
@@ -72,7 +75,6 @@ class Scraper:
         ]
         ```
         """
-        LOG.info("Starting scrape process for %s page(s) at URL: %s", pages, self.url)
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
@@ -81,6 +83,19 @@ class Scraper:
             current_url = self.url
 
             for page_number in range(1, pages + 1):
+                url_page = self.url + "?p=" + str(page_number)
+                LOG.info(
+                    "Starting scrape process for %s page(s) at URL: %s",
+                    pages,
+                    url_page,
+                )
+
+                cached_page = get_redis_repo().get_value(url_page)
+                if cached_page:
+                    LOG.info("Getting page info (page %s) from cache", page_number)
+                    results.extend(json.loads(cached_page))
+                    continue
+
                 LOG.debug("Scraping page %s: %s", page_number, current_url)
                 try:
                     await page.goto(current_url, timeout=60000)
@@ -111,6 +126,10 @@ class Scraper:
                             LOG.error("Error scraping article ID %s: %s", article_id, e)
 
                 results.extend(page_results)
+                data_to_store = [item.dict() for item in page_results]
+                LOG.info("Saving cache info: %s", url_page)
+                get_redis_repo().set_value(url_page, json.dumps(data_to_store), 60)
+
                 LOG.info(
                     "Page %s scraped. Articles found: %s",
                     page_number,
@@ -198,10 +217,10 @@ class HackerNewsScraper(Scraper):
                 "node => node.parentElement",
             )
 
-            user_link = await subtext_row.query_selector(".hnuser")  # type: ignore[attr-defined]
+            user_link = await subtext_row.query_selector(".hnuser")
             sent_by = await user_link.inner_text() if user_link else None
 
-            age_span = await subtext_row.query_selector(".age")  # type: ignore[attr-defined]
+            age_span = await subtext_row.query_selector(".age")
             published = await age_span.inner_text() if age_span else None
 
         else:
