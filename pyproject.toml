@@ -22,6 +22,11 @@ black = "^25.1.0"
 ruff = "^0.11.10"
 mypy = "^1.15.0"
 pre-commit = "^4.2.0"
+pytest = "^8.3.5"
+
+[tool.poetry.group.dev.dependencies]
+pytest-asyncio = "^0.26.0"
+httpx = "^0.28.1"
 
 [tool.ruff]
 # Defaults: https://beta.ruff.rs/docs/configuration/#using-pyprojecttoml
@@ -39,3 +44,10 @@ ignore = [
     "TRY400",  # Use `logging.exception` instead of `logging.error`
     "D104"     # Missing docstring in public package
 ]
+
+# Config to avoid pytest warning
+# eprecationWarning: The configuration option
+# "asyncio_default_fixture_loop_scope" is unset.
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
