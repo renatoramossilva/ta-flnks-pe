@@ -13,9 +13,18 @@ repos:
         language: system
         types: [python]
         require_serial: true
+        files: ^app/
 
       - id: mypy
         name: mypy
         entry: poetry run mypy
         language: system
         types: [python]
+
+      - id: pytest
+        name: pytest
+        entry: poetry run pytest tests
+        language: system
+        types: [python]
+        pass_filenames: false
+
