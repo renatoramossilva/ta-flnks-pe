@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the .netrc file for authentication and set appropriate permissions
-COPY .netrc /root/.netrc
-RUN chmod 600 /root/.netrc
+# COPY .netrc /root/.netrc
+# RUN chmod 600 /root/.netrc
 
 # Install Poetry and install project dependencies
 RUN pip install --no-cache-dir poetry \
