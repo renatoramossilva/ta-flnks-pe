@@ -2,8 +2,8 @@
 
 from fastapi import FastAPI
 
-from app.api.routes import news
+from app.api.routes import endpoints
 
 app = FastAPI()
 
-app.include_router(news.router)
+app.include_router(endpoints.router)
