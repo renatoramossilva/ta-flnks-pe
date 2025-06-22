@@ -1,0 +1,12 @@
+# .dockerignore
+.tox
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+.env
+*.log
+.git
+tests/

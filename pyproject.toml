@@ -17,12 +17,14 @@ build-backend = "poetry.core.masonry.api"
 uvicorn = "^0.34.2"
 fastapi = "^0.115.12"
 playwright = "^1.52.0"
-bindl-lib = {git = "https://github.com/renatoramossilva/bindl-lib.git", rev = "1.1.1"}
+bindl-lib = {git = "https://github.com/renatoramossilva/bindl-lib.git", branch = "add-aws-wrapper"}
 black = "^25.1.0"
-ruff = "^0.11.10"
+ruff = "^0.12.0"
 mypy = "^1.15.0"
 pre-commit = "^4.2.0"
 pytest = "^8.3.5"
+boto3 = "^1.38.36"
+docker = "^7.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest-asyncio = "^0.26.0"
